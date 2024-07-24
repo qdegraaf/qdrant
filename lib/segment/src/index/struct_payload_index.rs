@@ -53,6 +53,7 @@ pub struct StructPayloadIndex {
     /// Used to select unique point ids
     visited_pool: VisitedPool,
     db: Arc<RwLock<DB>>,
+    is_appendable: bool,
 }
 
 impl StructPayloadIndex {
@@ -116,7 +117,13 @@ impl StructPayloadIndex {
         payload_schema: PayloadFieldSchema,
         is_appendable: bool,
     ) -> OperationResult<Vec<FieldIndex>> {
-        let mut indexes = index_selector(field, &payload_schema, self.db.clone(), is_appendable);
+        let mut indexes = index_selector(
+            field,
+            &payload_schema,
+            &self.db,
+            self.mmap_index_dir(field, &payload_schema),
+            is_appendable,
+        )?;
 
         let mut is_loaded = true;
         for ref mut index in indexes.iter_mut() {
@@ -159,6 +166,7 @@ impl StructPayloadIndex {
             path: path.to_owned(),
             visited_pool: Default::default(),
             db,
+            is_appendable,
         };
 
         if !index.config_path().exists() {
@@ -177,7 +185,13 @@ impl StructPayloadIndex {
         payload_schema: PayloadFieldSchema,
     ) -> OperationResult<Vec<FieldIndex>> {
         let payload_storage = self.payload.borrow();
-        let mut builders = index_builder_selector(field, &payload_schema, self.db.clone());
+        let mut builders = index_builder_selector(
+            field,
+            &payload_schema,
+            self.db.clone(),
+            self.mmap_index_dir(field, &payload_schema),
+        );
+
         for index in &mut builders {
             index.init()?;
         }
@@ -350,6 +364,16 @@ impl StructPayloadIndex {
     }
     pub fn config(&self) -> &PayloadConfig {
         &self.config
+    }
+
+    /// Check whether we should use mmap-baked index, and if so, return the path of its directory.
+    fn mmap_index_dir(
+        &self,
+        field: &JsonPath,
+        payload_schema: &PayloadFieldSchema,
+    ) -> Option<PathBuf> {
+        (!self.is_appendable && payload_schema.is_on_disk())
+            .then(|| self.path.join(field.filename()))
     }
 }
 

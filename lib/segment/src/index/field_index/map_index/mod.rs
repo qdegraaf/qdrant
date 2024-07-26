@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::fmt::{Debug, Display};
 use std::hash::{BuildHasher, Hash};
 use std::iter;
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -363,6 +364,10 @@ impl PayloadFieldIndex for MapIndex<str> {
         MapIndex::flusher(self)
     }
 
+    fn files(&self) -> Vec<PathBuf> {
+        vec![]
+    }
+
     fn filter<'a>(
         &'a self,
         condition: &'a FieldCondition,
@@ -471,6 +476,10 @@ impl PayloadFieldIndex for MapIndex<IntPayloadType> {
 
     fn flusher(&self) -> Flusher {
         MapIndex::flusher(self)
+    }
+
+    fn files(&self) -> Vec<PathBuf> {
+        vec![]
     }
 
     fn filter<'a>(
